@@ -11,7 +11,6 @@ package openapi
 
 // ApiResponse - Describes the result of uploading an image resource
 type ApiResponse struct {
-
 	Code int32 `json:"code,omitempty"`
 
 	Type string `json:"type,omitempty"`
