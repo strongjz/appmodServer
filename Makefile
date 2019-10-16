@@ -52,7 +52,7 @@ helm_init:
 prom_deploy: helm_init
 	helm install stable/prometheus-operator --name prometheus
 
-elastic_search: aws_status
+elastic_search_deploy: aws_status
 	aws es --profile ${AWS_PROFILE} --region=${AWS_REGION} create-elasticsearch-domain \
 	  --domain-name kubernetes-logs \
 	  --elasticsearch-version 6.3 \
@@ -62,7 +62,7 @@ elastic_search: aws_status
 	  --access-policies '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["es:*"],"Resource":"*"}]}'
 
 elastic_search_delete:
-	aws es -profile ${AWS_PROFILE} --region=${AWS_REGION} delete-elasticsearch-domain kubernetes-logs
+	aws es --profile ${AWS_PROFILE} --region=${AWS_REGION} delete-elasticsearch-domain --domain-name kubernetes-logs
 
 grafana_deploy:
 	kubectl create namespace grafana; \
@@ -90,6 +90,14 @@ jaeger_deploy:
 	kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role_binding.yaml; \
 	kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/operator.yaml
 
-demo:
+demo: deploy_kubes nginx_l7_deploy helm_init prom_deploy elastic_search_deploy grafana_deploy jaeger_deploy k_deploy
+
+test_install:
+	pip install https://github.com/newsapps/beeswithmachineguns/archive/master.zip
+
+test_run:
+    bees up -s 4 -g public -k frakkingtoasters
+    bees attack -n 10000 -c 250 -u http://www.ournewwebbyhotness.com/
+    bees down
 
 destroy: delete_kubes elastic_search_delete
