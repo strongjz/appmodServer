@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: monolith
+  labels:
+    app: monolith
+    spot: monolith
+  annotations:
+    annotations:
+      kubernetes.io/ingress.class: "nginx"
+      nginx.org/mergeable-ingress-type: "master"
+spec:
+  rules:
+    - host: foo.bar.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: monolith
+              servicePort: 8080
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotspot1
+  labels:
+    app: monolith
+    spot: hotspot1
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.org/mergeable-ingress-type: "minion"
+    nginx.ingress.kubernetes.io/canary-weight: "10"
+spec:
+  rules:
+    - host: foo.bar.com
+      http:
+        paths:
+          - path: /hotspot1
+              serviceName: hotspot1
+              servicePort: 8080
+

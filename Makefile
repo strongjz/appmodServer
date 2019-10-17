@@ -4,6 +4,9 @@ AWS_REGION=us-west-2
 AWS_PROFILE=contino-personal-sandbox
 GRAFANA_PASSWORD=$$(openssl rand -base64 32)
 
+.EXPORT_ALL_VARIABLES:
+AWS_PROFILE=contino-personal-sandbox
+
 fmt:
 	gofmt -w $(GOFMT_FILES)
 
@@ -39,7 +42,7 @@ aws_auth:
 nginx_deploy:
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml
 
-nginx_l7_deploy:
+nginx_l7_deploy: nginx_deploy
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/service-l7.yaml; \
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/aws/patch-configmap-l7.yaml
 
@@ -52,17 +55,15 @@ helm_init:
 prom_deploy: helm_init
 	helm install stable/prometheus-operator --name prometheus
 
-elastic_search_deploy: aws_status
-	aws es --profile ${AWS_PROFILE} --region=${AWS_REGION} create-elasticsearch-domain \
-	  --domain-name kubernetes-logs \
-	  --elasticsearch-version 6.3 \
-	  --elasticsearch-cluster-config \
-	  InstanceType=m4.large.elasticsearch,InstanceCount=2 \
-	  --ebs-options EBSEnabled=true,VolumeType=standard,VolumeSize=100 \
-	  --access-policies '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["es:*"],"Resource":"*"}]}'
+elastic_search_deploy:
+	kubectl apply -f https://download.elastic.co/downloads/eck/1.0.0-beta1/all-in-one.yaml; \
+	kubectl apply -f es_deploy.yaml
 
-elastic_search_delete:
-	aws es --profile ${AWS_PROFILE} --region=${AWS_REGION} delete-elasticsearch-domain --domain-name kubernetes-logs
+es_password:
+	kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode
+
+es_search:
+	curl -u "elastic:$PASSWORD" -k "https://quickstart-es-http:9200"
 
 grafana_deploy:
 	kubectl create namespace grafana; \
@@ -90,14 +91,20 @@ jaeger_deploy:
 	kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/role_binding.yaml; \
 	kubectl create -f https://raw.githubusercontent.com/jaegertracing/jaeger-operator/master/deploy/operator.yaml
 
+fluentd_deploy:
+	kubectl apply -f fluentd_deploy.yaml
+
 demo: deploy_kubes nginx_l7_deploy helm_init prom_deploy elastic_search_deploy grafana_deploy jaeger_deploy k_deploy
+
+demo_skip_cluster: nginx_l7_deploy helm_init prom_deploy elastic_search_deploy grafana_deploy fluentd_deploy jaeger_deploy k_deploy
+
 
 test_install:
 	pip install https://github.com/newsapps/beeswithmachineguns/archive/master.zip
 
 test_run:
-    bees up -s 4 -g public -k frakkingtoasters
-    bees attack -n 10000 -c 250 -u http://www.ournewwebbyhotness.com/
-    bees down
+	bees up -s 4 -g public -k frakkingtoasters; \
+	bees attack -n 10000 -c 250 -u "http://www.ournewwebbyhotness.com/""; \
+	bees down
 
 destroy: delete_kubes elastic_search_delete
