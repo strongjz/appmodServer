@@ -1,9 +1,9 @@
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-  name: appmodserver
+  name: appmodserver-master
   labels:
-    app: monolith
+    app: appmodserver
     spot: monolith
   annotations:
     kubernetes.io/ingress.class: "nginx"
@@ -11,23 +11,39 @@ metadata:
 spec:
   rules:
     - host: cloudnative.wtf
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: monolith
+  labels:
+    app: monolith
+    spot: monolith
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.org/mergeable-ingress-type: "minion"
+spec:
+  rules:
+    - host: cloudnative.wtf
       http:
         paths:
-          - path: /
+          - path: /v2
             backend:
-              serviceName: monolith
+              serviceName: appmodserver
               servicePort: 8080
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: appmodserver
+  labels:
+    app: appmodserver
 spec:
   selector:
     app: appmodserver
   ports:
     - protocol: TCP
-      port: 80
+      port: 8080
       targetPort: 8080
   type: ClusterIP
 ---

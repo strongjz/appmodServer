@@ -11,7 +11,7 @@ metadata:
       nginx.org/mergeable-ingress-type: "master"
 spec:
   rules:
-    - host: foo.bar.com
+    - host: cloudnative.wtf
       http:
         paths:
           - path: /
